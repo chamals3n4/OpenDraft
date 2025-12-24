@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Edit02Icon,
@@ -10,6 +11,9 @@ import {
   Settings01Icon,
   UserGroupIcon,
   DashboardBrowsingIcon,
+  Add01Icon,
+  TextAlignLeftIcon,
+  ArrowRight01Icon,
 } from "@hugeicons/core-free-icons";
 
 import { NavUser } from "@/components/nav-user";
@@ -21,9 +25,17 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
   SidebarGroup,
   SidebarGroupLabel,
 } from "@/components/ui/sidebar";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import type { AuthUser } from "@/lib/auth";
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
@@ -31,27 +43,13 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 }
 
 export function AppSidebar({ user, ...props }: AppSidebarProps) {
+  const pathname = usePathname();
   const isAdmin = user.profile?.role === "admin";
   const isEditorOrAbove =
     user.profile?.role === "admin" || user.profile?.role === "editor";
 
-  const mainNav = [
-    { title: "Dashboard", url: "/", icon: DashboardBrowsingIcon },
-    { title: "Content", url: "/content", icon: Edit02Icon },
-    ...(isEditorOrAbove
-      ? [
-          { title: "Categories", url: "/categories", icon: FolderOpenIcon },
-          { title: "Tags", url: "/tags", icon: TagsIcon },
-        ]
-      : []),
-  ];
-
-  const adminNav = isAdmin
-    ? [
-        { title: "User Management", url: "/users", icon: UserGroupIcon },
-        { title: "Settings", url: "/settings", icon: Settings01Icon },
-      ]
-    : [];
+  // Check if we're in the content section
+  const isContentSection = pathname.startsWith("/content");
 
   const userData = {
     name: user.profile?.display_name || "User",
@@ -82,32 +80,100 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
         <SidebarGroup>
           <SidebarGroupLabel>Menu</SidebarGroupLabel>
           <SidebarMenu>
-            {mainNav.map((item) => (
-              <SidebarMenuItem key={item.title}>
-                <Link href={item.url}>
-                  <SidebarMenuButton tooltip={item.title}>
-                    <HugeiconsIcon icon={item.icon} strokeWidth={2} />
-                    <span>{item.title}</span>
+            {/* Dashboard */}
+            <SidebarMenuItem>
+              <Link href="/">
+                <SidebarMenuButton tooltip="Dashboard" isActive={pathname === "/"}>
+                  <HugeiconsIcon icon={DashboardBrowsingIcon} strokeWidth={2} />
+                  <span>Dashboard</span>
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+
+            {/* Content - Collapsible */}
+            <Collapsible defaultOpen={isContentSection} className="group/collapsible">
+              <SidebarMenuItem>
+                <CollapsibleTrigger className="w-full">
+                  <SidebarMenuButton tooltip="Content" isActive={isContentSection}>
+                    <HugeiconsIcon icon={Edit02Icon} strokeWidth={2} />
+                    <span>Content</span>
+                    <HugeiconsIcon
+                      icon={ArrowRight01Icon}
+                      strokeWidth={2}
+                      className="ml-auto transition-transform duration-200 group-data-[open]/collapsible:rotate-90"
+                    />
                   </SidebarMenuButton>
-                </Link>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <SidebarMenuSub>
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton
+                        render={<Link href="/content/new" />}
+                        isActive={pathname === "/content/new"}
+                      >
+                        <HugeiconsIcon icon={Add01Icon} strokeWidth={2} />
+                        <span>New Post</span>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton
+                        render={<Link href="/content" />}
+                        isActive={pathname === "/content"}
+                      >
+                        <HugeiconsIcon icon={TextAlignLeftIcon} strokeWidth={2} />
+                        <span>All Posts</span>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  </SidebarMenuSub>
+                </CollapsibleContent>
               </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarGroup>
-        {adminNav.length > 0 && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Admin</SidebarGroupLabel>
-            <SidebarMenu>
-              {adminNav.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <Link href={item.url}>
-                    <SidebarMenuButton tooltip={item.title}>
-                      <HugeiconsIcon icon={item.icon} strokeWidth={2} />
-                      <span>{item.title}</span>
+            </Collapsible>
+
+            {/* Categories & Tags - Only for editors and above */}
+            {isEditorOrAbove && (
+              <>
+                <SidebarMenuItem>
+                  <Link href="/categories">
+                    <SidebarMenuButton tooltip="Categories" isActive={pathname === "/categories"}>
+                      <HugeiconsIcon icon={FolderOpenIcon} strokeWidth={2} />
+                      <span>Categories</span>
                     </SidebarMenuButton>
                   </Link>
                 </SidebarMenuItem>
-              ))}
+                <SidebarMenuItem>
+                  <Link href="/tags">
+                    <SidebarMenuButton tooltip="Tags" isActive={pathname === "/tags"}>
+                      <HugeiconsIcon icon={TagsIcon} strokeWidth={2} />
+                      <span>Tags</span>
+                    </SidebarMenuButton>
+                  </Link>
+                </SidebarMenuItem>
+              </>
+            )}
+          </SidebarMenu>
+        </SidebarGroup>
+
+        {/* Admin Section */}
+        {isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Admin</SidebarGroupLabel>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <Link href="/users">
+                  <SidebarMenuButton tooltip="User Management" isActive={pathname === "/users"}>
+                    <HugeiconsIcon icon={UserGroupIcon} strokeWidth={2} />
+                    <span>User Management</span>
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <Link href="/settings">
+                  <SidebarMenuButton tooltip="Settings" isActive={pathname === "/settings"}>
+                    <HugeiconsIcon icon={Settings01Icon} strokeWidth={2} />
+                    <span>Settings</span>
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroup>
         )}
