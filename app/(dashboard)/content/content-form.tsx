@@ -2,10 +2,8 @@
 
 import { useActionState, useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  ArrowLeft02Icon,
   Image01Icon,
   Loading03Icon,
   Calendar03Icon,
@@ -16,6 +14,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import type { JSONContent } from "@tiptap/core";
 import { toast } from "sonner";
+import slugify from "slugify";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -181,6 +180,9 @@ export function ContentForm({
     content?.seo_meta?.canonical_url || ""
   );
 
+  // If editing existing content, allow slug editing by default
+  const [slugEditable, setSlugEditable] = useState(!!content?.slug);
+
   const handleFormAction = async (
     prevState: ContentFormState,
     formData: FormData
@@ -246,6 +248,30 @@ export function ContentForm({
     setIsCreatingTag(false);
   };
 
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newTitle = e.target.value;
+    setTitle(newTitle);
+
+    // Auto-generate slug only if not in edit mode
+    if (!slugEditable) {
+      setSlug(
+        slugify(newTitle, {
+          lower: true,
+          strict: true,
+          trim: true,
+        })
+      );
+    }
+  };
+
+  const handleSlugChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSlug(e.target.value);
+  };
+
+  const handleEnableSlugEdit = () => {
+    setSlugEditable(true);
+  };
+
   const filteredTags = availableTags.filter(
     (tag) =>
       tag.name.toLowerCase().includes(tagInput.toLowerCase()) &&
@@ -257,6 +283,41 @@ export function ContentForm({
   );
 
   const isEditing = !!content?.id;
+
+  // Validation helpers
+  const isContentEmpty =
+    !editorContent.content ||
+    editorContent.content.length === 0 ||
+    (editorContent.content.length === 1 &&
+      editorContent.content[0].type === "paragraph" &&
+      (!editorContent.content[0].content ||
+        editorContent.content[0].content.length === 0));
+
+  const isTitleEmpty = !title.trim();
+  const canSaveDraft = !isTitleEmpty;
+  const canPublish = !isTitleEmpty && !isContentEmpty;
+
+  const handlePublishClick = () => {
+    if (!canPublish) {
+      if (isTitleEmpty) {
+        toast.error("Title is required to publish");
+        return;
+      }
+      if (isContentEmpty) {
+        toast.error("Content is required to publish");
+        return;
+      }
+    }
+    setStatus("published");
+  };
+
+  const handleSaveDraftClick = () => {
+    if (!canSaveDraft) {
+      toast.error("Title is required");
+      return;
+    }
+    setStatus("draft");
+  };
 
   return (
     <form ref={formRef} action={formAction}>
@@ -270,19 +331,19 @@ export function ContentForm({
         </div>
         <div className="flex items-center gap-2">
           <Button
-            type="submit"
+            type={canSaveDraft ? "submit" : "button"}
             name="status"
             value="draft"
             variant="outline"
             disabled={isPending}
-            onClick={() => setStatus("draft")}
+            onClick={handleSaveDraftClick}
           >
             Save Draft
           </Button>
           <Button
-            type="submit"
+            type={canPublish ? "submit" : "button"}
             disabled={isPending}
-            onClick={() => setStatus("published")}
+            onClick={handlePublishClick}
           >
             {isPending && (
               <HugeiconsIcon
@@ -306,7 +367,7 @@ export function ContentForm({
               id="title"
               name="title"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={handleTitleChange}
               placeholder="Enter article title..."
               className="text-lg font-medium"
               required
@@ -314,16 +375,33 @@ export function ContentForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="slug">Slug (URL)</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="slug">Slug (URL)</Label>
+              {!slugEditable && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  onClick={handleEnableSlugEdit}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Edit slug
+                </Button>
+              )}
+            </div>
             <Input
               id="slug"
               name="slug"
               value={slug}
-              onChange={(e) => setSlug(e.target.value)}
+              onChange={handleSlugChange}
               placeholder="article-url-slug"
+              disabled={!slugEditable}
+              className={!slugEditable ? "bg-muted" : ""}
             />
             <p className="text-xs text-muted-foreground">
-              Leave empty to auto-generate from title
+              {slugEditable
+                ? "Customize your URL slug"
+                : "Auto-generated from title"}
             </p>
           </div>
 
@@ -337,6 +415,11 @@ export function ContentForm({
                 onChange={handleEditorChange}
               />
             </div>
+            {isContentEmpty && (
+              <p className="text-xs text-muted-foreground">
+                Add content to publish your post
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">

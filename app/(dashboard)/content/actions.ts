@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import slugify from "slugify";
 import type { JSONContent } from "@tiptap/core";
 
 export type ContentType =
@@ -22,15 +23,6 @@ export interface ContentFormState {
   error: string | null;
   success: boolean;
   contentId?: string;
-}
-
-function generateSlug(title: string): string {
-  return title
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/[\s_-]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 }
 
 export async function saveContent(
@@ -72,8 +64,11 @@ export async function saveContent(
   const ogImageUrl = formData.get("ogImageUrl") as string | null;
   const canonicalUrl = formData.get("canonicalUrl") as string | null;
 
+  // Validation
+  const errors: string[] = [];
+
   if (!title?.trim()) {
-    return { error: "Title is required", success: false };
+    errors.push("Title is required");
   }
 
   let body: JSONContent;
@@ -83,7 +78,37 @@ export async function saveContent(
     return { error: "Invalid content format", success: false };
   }
 
-  const slug = slugInput?.trim() || generateSlug(title);
+  // Check if content body is empty
+  const isBodyEmpty = !body.content || body.content.length === 0 || 
+    (body.content.length === 1 && 
+     body.content[0].type === "paragraph" && 
+     (!body.content[0].content || body.content[0].content.length === 0));
+
+  // Content is required when publishing
+  if (status === "published" && isBodyEmpty) {
+    errors.push("Content is required to publish");
+  }
+
+  // Scheduled date is required when scheduling
+  if (status === "scheduled" && !scheduledAt) {
+    errors.push("Schedule date is required for scheduled posts");
+  }
+
+  // Validate scheduled date is in the future
+  if (status === "scheduled" && scheduledAt) {
+    const scheduleDate = new Date(scheduledAt);
+    if (scheduleDate <= new Date()) {
+      errors.push("Schedule date must be in the future");
+    }
+  }
+
+  if (errors.length > 0) {
+    return { error: errors.join(". "), success: false };
+  }
+
+  const slug =
+    slugInput?.trim() ||
+    slugify(title, { lower: true, strict: true, trim: true });
 
   // Determine published_at based on status
   let publishedAt = null;
