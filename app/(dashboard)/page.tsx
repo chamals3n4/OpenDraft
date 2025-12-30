@@ -23,13 +23,25 @@ export default async function DashboardPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "published":
-        return <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">Published</Badge>;
+        return (
+          <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+            Published
+          </Badge>
+        );
       case "draft":
         return <Badge variant="secondary">Draft</Badge>;
       case "scheduled":
-        return <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">Scheduled</Badge>;
+        return (
+          <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">
+            Scheduled
+          </Badge>
+        );
       case "pending_review":
-        return <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20">Pending</Badge>;
+        return (
+          <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20">
+            Pending
+          </Badge>
+        );
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -80,7 +92,9 @@ export default async function DashboardPage() {
         </div>
         <div className="bg-card border rounded-xl p-6">
           <div className="flex items-center justify-between">
-            <h3 className="font-medium text-muted-foreground text-sm">Drafts</h3>
+            <h3 className="font-medium text-muted-foreground text-sm">
+              Drafts
+            </h3>
             <HugeiconsIcon
               icon={Edit02Icon}
               strokeWidth={2}
@@ -145,13 +159,6 @@ export default async function DashboardPage() {
         <Link href="/content/new" className="group">
           <div className="bg-primary text-primary-foreground rounded-xl p-4 transition-opacity group-hover:opacity-90">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary-foreground/20 rounded-lg">
-                <HugeiconsIcon
-                  icon={Edit02Icon}
-                  strokeWidth={2}
-                  className="size-5"
-                />
-              </div>
               <div>
                 <p className="text-lg font-semibold">New Post</p>
                 <p className="text-sm opacity-80">Create content</p>

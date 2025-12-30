@@ -33,9 +33,9 @@ export function NavUser({
       <SidebarMenuItem>
         <Link href="/profile">
           <SidebarMenuButton size="lg">
-            <Avatar className="h-8 w-8 rounded-lg">
+            <Avatar className="h-8 w-8 rounded-full">
               <AvatarImage src={user.avatar} alt={user.name} />
-              <AvatarFallback className="rounded-lg">
+              <AvatarFallback className="rounded-full">
                 {getInitials(user.name)}
               </AvatarFallback>
             </Avatar>

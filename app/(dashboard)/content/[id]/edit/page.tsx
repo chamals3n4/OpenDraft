@@ -1,13 +1,15 @@
 import { notFound } from "next/navigation";
 import { requireAuth } from "@/lib/auth";
 import { getContent, getCategories, getTags } from "../../actions";
-import { ContentForm } from "../../content-form";
+import { ContentForm } from "../../components/content-form";
 
 interface EditContentPageProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function EditContentPage({ params }: EditContentPageProps) {
+export default async function EditContentPage({
+  params,
+}: EditContentPageProps) {
   const { id } = await params;
   const user = await requireAuth();
 

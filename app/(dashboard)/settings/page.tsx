@@ -1,11 +1,8 @@
 import { requireRole } from "@/lib/auth";
-import { getSettings } from "./actions";
 import { SettingsForm } from "./settings-form";
 
 export default async function SettingsPage() {
   await requireRole(["admin"]);
-
-  const settings = await getSettings();
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0 px-6 lg:px-10">
@@ -17,7 +14,7 @@ export default async function SettingsPage() {
       </div>
 
       <div className="max-w-3xl">
-        <SettingsForm settings={settings} />
+        <SettingsForm />
       </div>
     </div>
   );

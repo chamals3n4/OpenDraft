@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -100,8 +101,12 @@ export function CategorySheet({
     }
   }, [category]);
 
+  const router = useRouter();
+
   useEffect(() => {
     if (state.success) {
+      // Refresh the page to show new category
+      router.refresh();
       const timer = setTimeout(() => {
         setIsOpen(false);
         if (!isEdit) {
@@ -113,7 +118,7 @@ export function CategorySheet({
       }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [state.success, setIsOpen, isEdit]);
+  }, [state.success, setIsOpen, isEdit, router]);
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newName = e.target.value;
@@ -241,7 +246,7 @@ export function CategorySheet({
               disabled={isPending || state.success}
             >
               <SelectTrigger id="parentId">
-                <SelectValue placeholder="None (top-level)" />
+                <SelectValue>None (top-level)</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">None (top-level)</SelectItem>
@@ -316,7 +321,7 @@ export function CategorySheet({
   if (trigger) {
     return (
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetTrigger render={trigger} />
+        <SheetTrigger render={(props) => <div {...props}>{trigger}</div>} />
         {sheetContent}
       </Sheet>
     );

@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox"
+import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox";
 
-import { cn } from "@/lib/utils"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { Tick02Icon } from "@hugeicons/core-free-icons"
+import { cn } from "@/lib/utils";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Tick02Icon } from "@hugeicons/core-free-icons";
 
 function Checkbox({ className, ...props }: CheckboxPrimitive.Root.Props) {
   return (
@@ -23,7 +23,7 @@ function Checkbox({ className, ...props }: CheckboxPrimitive.Root.Props) {
         <HugeiconsIcon icon={Tick02Icon} strokeWidth={2} />
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
-  )
+  );
 }
 
-export { Checkbox }
+export { Checkbox };

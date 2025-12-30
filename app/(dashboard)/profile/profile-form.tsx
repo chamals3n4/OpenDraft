@@ -1,9 +1,14 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Loading03Icon, Image01Icon, LogoutSquare01Icon } from "@hugeicons/core-free-icons";
+import {
+  Loading03Icon,
+  LogoutSquare01Icon,
+  Camera01Icon,
+  Delete01Icon,
+} from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -39,10 +44,62 @@ const initialState: ProfileFormState = {
 export function ProfileForm({ profile }: ProfileFormProps) {
   const router = useRouter();
   const supabase = createClient();
-  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [displayName, setDisplayName] = useState(profile.display_name);
   const [bio, setBio] = useState(profile.bio || "");
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url || "");
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Image must be less than 2MB");
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${profile.id}-${Date.now()}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data } = supabase.storage.from("avatars").getPublicUrl(filePath);
+
+      setAvatarUrl(data.publicUrl);
+      toast.success("Avatar uploaded successfully");
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error("Failed to upload avatar");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleRemoveAvatar = () => {
+    setAvatarUrl("");
+  };
 
   const handleFormAction = async (
     prevState: ProfileFormState,
@@ -97,9 +154,9 @@ export function ProfileForm({ profile }: ProfileFormProps) {
         <div className="flex flex-col sm:flex-row items-start gap-6">
           {/* Avatar */}
           <div className="shrink-0">
-            <Avatar className="h-24 w-24 rounded-xl">
+            <Avatar className="h-24 w-24 rounded-full">
               <AvatarImage src={avatarUrl} alt={displayName} />
-              <AvatarFallback className="rounded-xl text-2xl">
+              <AvatarFallback className="rounded-full text-2xl">
                 {getInitials(displayName)}
               </AvatarFallback>
             </Avatar>
@@ -116,7 +173,9 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                 {profile.role}
               </Badge>
               <Badge
-                variant={profile.status === "active" ? "outline" : "destructive"}
+                variant={
+                  profile.status === "active" ? "outline" : "destructive"
+                }
                 className="capitalize"
               >
                 {profile.status}
@@ -141,39 +200,63 @@ export function ProfileForm({ profile }: ProfileFormProps) {
           <div className="bg-card border rounded-lg p-6 space-y-6">
             <h3 className="font-semibold">Profile Information</h3>
 
-            {/* Avatar URL */}
-            <div className="space-y-2">
-              <Label htmlFor="avatarUrl">Avatar URL</Label>
-              <div className="flex gap-3">
-                <div className="shrink-0">
-                  {avatarUrl ? (
-                    <img
-                      src={avatarUrl}
-                      alt="Preview"
-                      className="h-10 w-10 rounded-lg object-cover"
-                    />
-                  ) : (
-                    <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
+            {/* Avatar Upload */}
+            <div className="space-y-3">
+              <Label>Profile Photo</Label>
+              <div className="flex items-center gap-4">
+                <div className="relative group">
+                  <Avatar className="h-20 w-20 rounded-full">
+                    <AvatarImage src={avatarUrl} alt={displayName} />
+                    <AvatarFallback className="rounded-full text-xl">
+                      {getInitials(displayName)}
+                    </AvatarFallback>
+                  </Avatar>
+                  {isUploading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
                       <HugeiconsIcon
-                        icon={Image01Icon}
+                        icon={Loading03Icon}
+                        className="animate-spin text-white"
                         strokeWidth={2}
-                        className="size-5 text-muted-foreground"
                       />
                     </div>
                   )}
                 </div>
-                <Input
-                  id="avatarUrl"
-                  name="avatarUrl"
-                  type="url"
-                  value={avatarUrl}
-                  onChange={(e) => setAvatarUrl(e.target.value)}
-                  placeholder="https://example.com/avatar.jpg"
-                  className="flex-1"
-                />
+                <div className="flex flex-col gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarUpload}
+                    className="hidden"
+                  />
+                  <input type="hidden" name="avatarUrl" value={avatarUrl} />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                  >
+                    <HugeiconsIcon icon={Camera01Icon} strokeWidth={2} />
+                    {avatarUrl ? "Change Photo" : "Upload Photo"}
+                  </Button>
+                  {avatarUrl && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRemoveAvatar}
+                      disabled={isUploading}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <HugeiconsIcon icon={Delete01Icon} strokeWidth={2} />
+                      Remove
+                    </Button>
+                  )}
+                </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Enter a URL for your profile picture
+                JPG, PNG or GIF. Max 2MB.
               </p>
             </div>
 

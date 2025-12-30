@@ -11,21 +11,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import {
-  updateSettings,
-  type SiteSettings,
-  type SettingsFormState,
-} from "./actions";
+import { updateSettings, type SettingsFormState } from "./actions";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { CheckmarkCircle02Icon } from "@hugeicons/core-free-icons";
 
-interface SettingsFormProps {
-  settings: SiteSettings;
-}
-
 const initialState: SettingsFormState = { error: null, success: false };
 
-export function SettingsForm({ settings }: SettingsFormProps) {
+export function SettingsForm() {
   const [state, action, isPending] = useActionState(
     updateSettings,
     initialState
@@ -59,8 +51,6 @@ export function SettingsForm({ settings }: SettingsFormProps) {
             <Input
               id="site_name"
               name="site_name"
-              defaultValue={settings.site_name}
-              placeholder="My Awesome Blog"
               required
               disabled={isPending}
             />
@@ -74,8 +64,6 @@ export function SettingsForm({ settings }: SettingsFormProps) {
             <Textarea
               id="site_description"
               name="site_description"
-              defaultValue={settings.site_description}
-              placeholder="A blog about technology, design, and more..."
               rows={3}
               disabled={isPending}
             />
@@ -90,8 +78,6 @@ export function SettingsForm({ settings }: SettingsFormProps) {
               id="site_url"
               name="site_url"
               type="url"
-              defaultValue={settings.site_url}
-              placeholder="https://example.com"
               disabled={isPending}
             />
             <FieldDescription>
@@ -106,7 +92,6 @@ export function SettingsForm({ settings }: SettingsFormProps) {
                 id="site_logo"
                 name="site_logo"
                 type="url"
-                defaultValue={settings.site_logo}
                 placeholder="https://example.com/logo.png"
                 disabled={isPending}
               />
@@ -117,7 +102,6 @@ export function SettingsForm({ settings }: SettingsFormProps) {
                 id="site_favicon"
                 name="site_favicon"
                 type="url"
-                defaultValue={settings.site_favicon}
                 placeholder="https://example.com/favicon.ico"
                 disabled={isPending}
               />
@@ -132,7 +116,6 @@ export function SettingsForm({ settings }: SettingsFormProps) {
               type="number"
               min={1}
               max={50}
-              defaultValue={settings.posts_per_page}
               className="w-24"
               disabled={isPending}
             />
@@ -143,7 +126,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
         </FieldGroup>
       </div>
 
-      {/* Comments Settings */}
+      {/* comments settings */}
       <div className="bg-card border rounded-xl p-6">
         <h2 className="text-lg font-semibold mb-4">Comments</h2>
         <FieldGroup>
@@ -160,8 +143,6 @@ export function SettingsForm({ settings }: SettingsFormProps) {
               <Switch
                 id="comments_enabled"
                 name="comments_enabled"
-                value="true"
-                defaultChecked={settings.comments_enabled}
                 disabled={isPending}
               />
             </div>
@@ -180,8 +161,6 @@ export function SettingsForm({ settings }: SettingsFormProps) {
               <Switch
                 id="comments_moderation"
                 name="comments_moderation"
-                value="true"
-                defaultChecked={settings.comments_moderation}
                 disabled={isPending}
               />
             </div>
@@ -198,7 +177,6 @@ export function SettingsForm({ settings }: SettingsFormProps) {
               <Input
                 id="social_twitter"
                 name="social_twitter"
-                defaultValue={settings.social_twitter}
                 placeholder="https://twitter.com/username"
                 disabled={isPending}
               />
@@ -208,8 +186,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
               <Input
                 id="social_facebook"
                 name="social_facebook"
-                defaultValue={settings.social_facebook}
-                placeholder="https://facebook.com/page"
+                placeholder="https://facebook.com/page_id"
                 disabled={isPending}
               />
             </Field>
@@ -218,7 +195,6 @@ export function SettingsForm({ settings }: SettingsFormProps) {
               <Input
                 id="social_instagram"
                 name="social_instagram"
-                defaultValue={settings.social_instagram}
                 placeholder="https://instagram.com/username"
                 disabled={isPending}
               />
@@ -228,7 +204,6 @@ export function SettingsForm({ settings }: SettingsFormProps) {
               <Input
                 id="social_github"
                 name="social_github"
-                defaultValue={settings.social_github}
                 placeholder="https://github.com/username"
                 disabled={isPending}
               />

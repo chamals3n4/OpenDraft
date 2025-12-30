@@ -35,7 +35,7 @@ interface TagSheetProps {
   tag?: Tag | null;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  trigger?: React.ReactNode;
+  trigger?: React.ReactElement;
 }
 
 const initialState: TagFormState = { error: null, success: false };

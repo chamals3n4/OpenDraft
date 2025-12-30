@@ -25,8 +25,8 @@ export interface SettingsFormState {
 }
 
 const defaultSettings: SiteSettings = {
-  site_name: "My Blog",
-  site_description: "A blog built with OpenDraft",
+  site_name: "",
+  site_description: "",
   site_logo: "",
   site_favicon: "",
   site_url: "",

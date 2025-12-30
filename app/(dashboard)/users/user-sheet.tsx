@@ -2,7 +2,12 @@
 
 import { useActionState, useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { Field, FieldGroup, FieldLabel, FieldDescription } from "@/components/ui/field";
+import {
+  Field,
+  FieldGroup,
+  FieldLabel,
+  FieldDescription,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -49,28 +54,28 @@ interface UserSheetProps {
   user?: User | null;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  trigger?: React.ReactNode;
+  trigger?: React.ReactElement;
 }
 
 const createInitialState: CreateUserFormState = { error: null, success: false };
 const updateInitialState: UpdateUserFormState = { error: null, success: false };
 
-function generatePassword(length = 16): string {
-  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
-  let password = "";
-  const randomValues = new Uint32Array(length);
-  crypto.getRandomValues(randomValues);
-  for (let i = 0; i < length; i++) {
-    password += charset[randomValues[i] % charset.length];
-  }
-  return password;
-}
-
-export function UserSheet({ user, open, onOpenChange, trigger }: UserSheetProps) {
+export function UserSheet({
+  user,
+  open,
+  onOpenChange,
+  trigger,
+}: UserSheetProps) {
   const isEdit = !!user;
 
-  const [createState, createAction, isCreating] = useActionState(createUser, createInitialState);
-  const [updateState, updateAction, isUpdating] = useActionState(updateUser, updateInitialState);
+  const [createState, createAction, isCreating] = useActionState(
+    createUser,
+    createInitialState
+  );
+  const [updateState, updateAction, isUpdating] = useActionState(
+    updateUser,
+    updateInitialState
+  );
   const [isDeleting, startDeleteTransition] = useTransition();
 
   const state = isEdit ? updateState : createState;
@@ -78,10 +83,12 @@ export function UserSheet({ user, open, onOpenChange, trigger }: UserSheetProps)
 
   const [internalOpen, setInternalOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [password, setPassword] = useState(() => generatePassword());
+  const [password, setPassword] = useState("");
   const [copied, setCopied] = useState(false);
   const [selectedRole, setSelectedRole] = useState(user?.role || "contributor");
-  const [selectedStatus, setSelectedStatus] = useState(user?.status || "active");
+  const [selectedStatus, setSelectedStatus] = useState(
+    user?.status || "active"
+  );
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const isOpen = open !== undefined ? open : internalOpen;
@@ -103,7 +110,6 @@ export function UserSheet({ user, open, onOpenChange, trigger }: UserSheetProps)
       const timer = setTimeout(() => {
         setIsOpen(false);
         if (!isEdit) {
-          setPassword(generatePassword());
           setSelectedRole("contributor");
         }
       }, 1000);
@@ -125,10 +131,6 @@ export function UserSheet({ user, open, onOpenChange, trigger }: UserSheetProps)
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleGeneratePassword = () => {
-    setPassword(generatePassword());
-  };
-
   const handleDelete = () => {
     if (!user) return;
     startDeleteTransition(async () => {
@@ -144,7 +146,9 @@ export function UserSheet({ user, open, onOpenChange, trigger }: UserSheetProps)
       <SheetHeader>
         <SheetTitle>{isEdit ? "Edit User" : "Add New User"}</SheetTitle>
         <SheetDescription>
-          {isEdit ? "Update user details and permissions." : "Create a new user account."}
+          {isEdit
+            ? "Update user details and permissions."
+            : "Create a new user account."}
         </SheetDescription>
       </SheetHeader>
       <form
@@ -161,7 +165,11 @@ export function UserSheet({ user, open, onOpenChange, trigger }: UserSheetProps)
           {state.success && (
             <div className="rounded-md bg-emerald-500/10 border border-emerald-500/20 p-3 text-sm text-emerald-600 dark:text-emerald-400">
               <div className="flex items-center gap-2">
-                <HugeiconsIcon icon={CheckmarkCircle02Icon} strokeWidth={2} className="size-4" />
+                <HugeiconsIcon
+                  icon={CheckmarkCircle02Icon}
+                  strokeWidth={2}
+                  className="size-4"
+                />
                 {state.message}
               </div>
             </div>
@@ -173,7 +181,7 @@ export function UserSheet({ user, open, onOpenChange, trigger }: UserSheetProps)
               id="displayName"
               name="displayName"
               type="text"
-              placeholder="John Doe"
+              placeholder="Reshika Tharindi"
               defaultValue={user?.display_name || ""}
               required
               disabled={isPending || state.success}
@@ -187,7 +195,7 @@ export function UserSheet({ user, open, onOpenChange, trigger }: UserSheetProps)
                 id="email"
                 name="email"
                 type="email"
-                placeholder="john@example.com"
+                placeholder="hello@example.com"
                 required
                 disabled={isPending || state.success}
               />
@@ -233,19 +241,6 @@ export function UserSheet({ user, open, onOpenChange, trigger }: UserSheetProps)
                     strokeWidth={2}
                     className="size-4"
                   />
-                </Button>
-              </div>
-              <div className="flex items-center justify-between mt-1">
-                <FieldDescription>Share securely with the user.</FieldDescription>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleGeneratePassword}
-                  disabled={isPending || state.success}
-                  className="text-xs h-auto py-1"
-                >
-                  Generate
                 </Button>
               </div>
             </Field>
@@ -295,7 +290,13 @@ export function UserSheet({ user, open, onOpenChange, trigger }: UserSheetProps)
             className="mt-2"
             disabled={isPending || state.success || isDeleting}
           >
-            {isPending ? (isEdit ? "Saving..." : "Creating...") : (isEdit ? "Save Changes" : "Create User")}
+            {isPending
+              ? isEdit
+                ? "Saving..."
+                : "Creating..."
+              : isEdit
+              ? "Save Changes"
+              : "Create User"}
           </Button>
         </FieldGroup>
       </form>
@@ -357,4 +358,3 @@ export function UserSheet({ user, open, onOpenChange, trigger }: UserSheetProps)
     </Sheet>
   );
 }
-

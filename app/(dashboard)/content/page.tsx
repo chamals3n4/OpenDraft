@@ -1,14 +1,33 @@
-import Link from "next/link"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { Add01Icon } from "@hugeicons/core-free-icons"
-import { requireAuth } from "@/lib/auth"
-import { getContents } from "./actions"
-import { Button } from "@/components/ui/button"
-import { ContentList } from "./content-list"
+import Link from "next/link";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Add01Icon } from "@hugeicons/core-free-icons";
+import { requireAuth } from "@/lib/auth";
+import { getContents } from "./actions";
+import { Button } from "@/components/ui/button";
+import { ContentList } from "./components/content-list";
 
-export default async function ContentPage() {
-  await requireAuth()
-  const contents = await getContents()
+interface ContentPageProps {
+  searchParams: Promise<{
+    search?: string;
+    status?: string;
+    type?: string;
+    page?: string;
+  }>;
+}
+
+export default async function ContentPage({ searchParams }: ContentPageProps) {
+  await requireAuth();
+
+  const params = await searchParams;
+  const filters = {
+    search: params.search || "",
+    status: params.status || "all",
+    type: params.type || "all",
+    page: parseInt(params.page || "1"),
+    limit: 10,
+  };
+
+  const contents = await getContents(filters);
 
   return (
     <div className="flex flex-1 flex-col gap-4 px-6 lg:px-10 py-4 pt-0">
@@ -21,14 +40,26 @@ export default async function ContentPage() {
         </div>
         <Link href="/content/new">
           <Button>
-            <HugeiconsIcon icon={Add01Icon} data-icon="inline-start" strokeWidth={2} />
+            <HugeiconsIcon
+              icon={Add01Icon}
+              data-icon="inline-start"
+              strokeWidth={2}
+            />
             New Content
           </Button>
         </Link>
       </div>
 
-      <ContentList contents={contents} />
+      <ContentList
+        contents={contents.data}
+        pagination={{
+          total: contents.total,
+          page: contents.page,
+          limit: contents.limit,
+          totalPages: contents.totalPages,
+        }}
+        filters={filters}
+      />
     </div>
-  )
+  );
 }
-

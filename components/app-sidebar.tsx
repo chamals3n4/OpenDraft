@@ -14,6 +14,7 @@ import {
   Add01Icon,
   TextAlignLeftIcon,
   ArrowRight01Icon,
+  Image01Icon,
 } from "@hugeicons/core-free-icons";
 
 import { NavUser } from "@/components/nav-user";
@@ -48,8 +49,10 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
   const isEditorOrAbove =
     user.profile?.role === "admin" || user.profile?.role === "editor";
 
-  // Check if we're in the content section
+  // Check if we're in the content section (for collapsible open state)
   const isContentSection = pathname.startsWith("/content");
+  // Check if we're on the exact content route (not sub-routes)
+  const isContentRoute = pathname === "/content";
 
   const userData = {
     name: user.profile?.display_name || "User",
@@ -66,10 +69,10 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
             <Link href="/">
               <SidebarMenuButton
                 size="lg"
-                className="hover:bg-transparent active:bg-transparent"
+                className="text-foreground hover:bg-transparent hover:text-foreground active:bg-transparent active:text-foreground"
               >
                 <span className="text-[1.35rem] font-semibold">
-                  OpenDraft 🧩
+                  OpenDraft Console
                 </span>
               </SidebarMenuButton>
             </Link>
@@ -83,7 +86,10 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
             {/* Dashboard */}
             <SidebarMenuItem>
               <Link href="/">
-                <SidebarMenuButton tooltip="Dashboard" isActive={pathname === "/"}>
+                <SidebarMenuButton
+                  tooltip="Dashboard"
+                  isActive={pathname === "/"}
+                >
                   <HugeiconsIcon icon={DashboardBrowsingIcon} strokeWidth={2} />
                   <span>Dashboard</span>
                 </SidebarMenuButton>
@@ -91,19 +97,23 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
             </SidebarMenuItem>
 
             {/* Content - Collapsible */}
-            <Collapsible defaultOpen={isContentSection} className="group/collapsible">
+            <Collapsible
+              defaultOpen={isContentSection}
+              className="group/collapsible"
+            >
               <SidebarMenuItem>
-                <CollapsibleTrigger className="w-full">
-                  <SidebarMenuButton tooltip="Content" isActive={isContentSection}>
-                    <HugeiconsIcon icon={Edit02Icon} strokeWidth={2} />
-                    <span>Content</span>
-                    <HugeiconsIcon
-                      icon={ArrowRight01Icon}
-                      strokeWidth={2}
-                      className="ml-auto transition-transform duration-200 group-data-[open]/collapsible:rotate-90"
-                    />
-                  </SidebarMenuButton>
-                </CollapsibleTrigger>
+                <SidebarMenuButton
+                  isActive={isContentRoute}
+                  render={<CollapsibleTrigger />}
+                >
+                  <HugeiconsIcon icon={Edit02Icon} strokeWidth={2} />
+                  <span>Content</span>
+                  <HugeiconsIcon
+                    icon={ArrowRight01Icon}
+                    strokeWidth={2}
+                    className="ml-auto transition-transform duration-200 group-data-[open]/collapsible:rotate-90"
+                  />
+                </SidebarMenuButton>
                 <CollapsibleContent>
                   <SidebarMenuSub>
                     <SidebarMenuSubItem>
@@ -120,7 +130,10 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                         render={<Link href="/content" />}
                         isActive={pathname === "/content"}
                       >
-                        <HugeiconsIcon icon={TextAlignLeftIcon} strokeWidth={2} />
+                        <HugeiconsIcon
+                          icon={TextAlignLeftIcon}
+                          strokeWidth={2}
+                        />
                         <span>All Posts</span>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
@@ -129,12 +142,28 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
               </SidebarMenuItem>
             </Collapsible>
 
+            {/* Media Library */}
+            <SidebarMenuItem>
+              <Link href="/media">
+                <SidebarMenuButton
+                  tooltip="Media"
+                  isActive={pathname === "/media"}
+                >
+                  <HugeiconsIcon icon={Image01Icon} strokeWidth={2} />
+                  <span>Media</span>
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+
             {/* Categories & Tags - Only for editors and above */}
             {isEditorOrAbove && (
               <>
                 <SidebarMenuItem>
                   <Link href="/categories">
-                    <SidebarMenuButton tooltip="Categories" isActive={pathname === "/categories"}>
+                    <SidebarMenuButton
+                      tooltip="Categories"
+                      isActive={pathname === "/categories"}
+                    >
                       <HugeiconsIcon icon={FolderOpenIcon} strokeWidth={2} />
                       <span>Categories</span>
                     </SidebarMenuButton>
@@ -142,7 +171,10 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <Link href="/tags">
-                    <SidebarMenuButton tooltip="Tags" isActive={pathname === "/tags"}>
+                    <SidebarMenuButton
+                      tooltip="Tags"
+                      isActive={pathname === "/tags"}
+                    >
                       <HugeiconsIcon icon={TagsIcon} strokeWidth={2} />
                       <span>Tags</span>
                     </SidebarMenuButton>
@@ -160,7 +192,10 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
             <SidebarMenu>
               <SidebarMenuItem>
                 <Link href="/users">
-                  <SidebarMenuButton tooltip="User Management" isActive={pathname === "/users"}>
+                  <SidebarMenuButton
+                    tooltip="User Management"
+                    isActive={pathname === "/users"}
+                  >
                     <HugeiconsIcon icon={UserGroupIcon} strokeWidth={2} />
                     <span>User Management</span>
                   </SidebarMenuButton>
@@ -168,7 +203,10 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <Link href="/settings">
-                  <SidebarMenuButton tooltip="Settings" isActive={pathname === "/settings"}>
+                  <SidebarMenuButton
+                    tooltip="Settings"
+                    isActive={pathname === "/settings"}
+                  >
                     <HugeiconsIcon icon={Settings01Icon} strokeWidth={2} />
                     <span>Settings</span>
                   </SidebarMenuButton>

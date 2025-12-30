@@ -146,6 +146,28 @@ CREATE TABLE settings (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
+CREATE TABLE media (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  
+  filename TEXT NOT NULL,
+  original_name TEXT NOT NULL,
+  mime_type TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  
+  url TEXT NOT NULL,
+  storage_path TEXT NOT NULL,
+  
+  alt_text TEXT,
+  caption TEXT,
+  
+  uploaded_by UUID REFERENCES profiles(id),
+  
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_media_uploaded_by ON media(uploaded_by);
+CREATE INDEX idx_media_created_at ON media(created_at DESC);
+
 CREATE INDEX idx_contents_status
   ON contents(status);
 
@@ -164,6 +186,7 @@ CREATE INDEX idx_comments_content
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE media ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY public_read_published_content
 ON contents
@@ -178,6 +201,45 @@ USING (author_id = auth.uid());
 CREATE POLICY admin_full_access
 ON contents
 FOR ALL
+USING (
+  EXISTS (
+    SELECT 1
+    FROM profiles
+    WHERE id = auth.uid()
+      AND role = 'admin'
+  )
+);
+
+-- Media policies: authenticated users can read all, manage their own
+CREATE POLICY media_public_read
+ON media
+FOR SELECT
+TO authenticated
+USING (true);
+
+CREATE POLICY media_insert_own
+ON media
+FOR INSERT
+TO authenticated
+WITH CHECK (uploaded_by = auth.uid());
+
+CREATE POLICY media_update_own
+ON media
+FOR UPDATE
+TO authenticated
+USING (uploaded_by = auth.uid());
+
+CREATE POLICY media_delete_own
+ON media
+FOR DELETE
+TO authenticated
+USING (uploaded_by = auth.uid());
+
+-- Admins can manage all media
+CREATE POLICY media_admin_full_access
+ON media
+FOR ALL
+TO authenticated
 USING (
   EXISTS (
     SELECT 1

@@ -34,7 +34,7 @@ export async function getCategories(): Promise<Category[]> {
       description,
       parent_id,
       created_at,
-      parent:categories!categories_parent_id_fkey(name)
+      parent:categories!parent_id(name)
     `
     )
     .order("name");

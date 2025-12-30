@@ -11,8 +11,8 @@ import {
   Settings02Icon,
   ArrowDown01Icon,
   Cancel01Icon,
+  EyeIcon,
 } from "@hugeicons/core-free-icons";
-import type { JSONContent } from "@tiptap/core";
 import { toast } from "sonner";
 import slugify from "slugify";
 
@@ -42,7 +42,8 @@ import {
   type ContentType,
   type ContentStatus,
   type ContentVisibility,
-} from "./actions";
+} from "../actions";
+import { uploadMedia } from "../../media/actions";
 
 interface Category {
   id: string;
@@ -70,7 +71,7 @@ interface ContentFormProps {
     id: string;
     title: string;
     slug: string;
-    body: JSONContent;
+    body: any;
     type: ContentType;
     status: ContentStatus;
     visibility: ContentVisibility;
@@ -137,32 +138,59 @@ export function ContentForm({
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
 
-  const [editorContent, setEditorContent] = useState<JSONContent>(
-    content?.body || { type: "doc", content: [] }
+  // Restore form state from sessionStorage if available (when returning from preview)
+  const getStoredState = (key: string, defaultValue: any) => {
+    if (typeof window === "undefined") return defaultValue;
+    try {
+      const stored = sessionStorage.getItem(`content-form-${key}`);
+      if (stored) {
+        sessionStorage.removeItem(`content-form-${key}`); // Clear after reading
+        return JSON.parse(stored);
+      }
+    } catch (e) {
+      // Ignore errors
+    }
+    return defaultValue;
+  };
+
+  const [editorContent, setEditorContent] = useState<any>(
+    getStoredState("body", content?.body || null)
   );
-  const [title, setTitle] = useState(content?.title || "");
-  const [slug, setSlug] = useState(content?.slug || "");
-  const [type, setType] = useState<ContentType>(content?.type || "post");
+  const [title, setTitle] = useState(
+    getStoredState("title", content?.title || "")
+  );
+  const [slug, setSlug] = useState(getStoredState("slug", content?.slug || ""));
+  const [type, setType] = useState<ContentType>(
+    getStoredState("type", content?.type || "post")
+  );
   const [status, setStatus] = useState<ContentStatus>(
-    content?.status || "draft"
+    getStoredState("status", content?.status || "draft")
   );
   const [visibility, setVisibility] = useState<ContentVisibility>(
-    content?.visibility || "public"
+    getStoredState("visibility", content?.visibility || "public")
   );
-  const [excerpt, setExcerpt] = useState(content?.excerpt || "");
-  const [categoryId, setCategoryId] = useState(content?.category_id || "");
+  const [excerpt, setExcerpt] = useState(
+    getStoredState("excerpt", content?.excerpt || "")
+  );
+  const [categoryId, setCategoryId] = useState(
+    getStoredState("categoryId", content?.category_id || "")
+  );
   const [thumbnailUrl, setThumbnailUrl] = useState(
-    content?.thumbnail_url || ""
+    getStoredState("thumbnailUrl", content?.thumbnail_url || "")
   );
-  const [isFeatured, setIsFeatured] = useState(content?.is_featured || false);
+  const [isFeatured, setIsFeatured] = useState(
+    getStoredState("isFeatured", content?.is_featured || false)
+  );
   const [allowComments, setAllowComments] = useState(
-    content?.allow_comments ?? true
+    getStoredState("allowComments", content?.allow_comments ?? true)
   );
-  const [scheduledAt, setScheduledAt] = useState(content?.scheduled_at || "");
+  const [scheduledAt, setScheduledAt] = useState(
+    getStoredState("scheduledAt", content?.scheduled_at || "")
+  );
 
   const [availableTags, setAvailableTags] = useState<Tag[]>(initialTags);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>(
-    content?.tag_ids || []
+    getStoredState("selectedTagIds", content?.tag_ids || [])
   );
   const [tagInput, setTagInput] = useState("");
   const [isCreatingTag, setIsCreatingTag] = useState(false);
@@ -188,6 +216,18 @@ export function ContentForm({
     formData: FormData
   ): Promise<ContentFormState> => {
     formData.set("body", JSON.stringify(editorContent));
+    // Check if TipTap content is empty
+    const isBodyEmpty =
+      !editorContent ||
+      !editorContent.type ||
+      editorContent.type !== "doc" ||
+      !Array.isArray(editorContent.content) ||
+      editorContent.content.length === 0 ||
+      (editorContent.content.length === 1 &&
+        editorContent.content[0]?.type === "paragraph" &&
+        (!editorContent.content[0]?.content ||
+          editorContent.content[0]?.content.length === 0));
+    formData.set("bodyIsEmpty", String(isBodyEmpty));
     formData.set("type", type);
     formData.set("status", status);
     formData.set("visibility", visibility);
@@ -221,9 +261,81 @@ export function ContentForm({
     initialState
   );
 
-  const handleEditorChange = useCallback((content: JSONContent) => {
+  const handleEditorChange = useCallback((content: any) => {
     setEditorContent(content);
   }, []);
+
+  // Featured image upload state
+  const [isUploadingThumbnail, setIsUploadingThumbnail] = useState(false);
+  const thumbnailInputRef = useRef<HTMLInputElement>(null);
+
+  const handleThumbnailUpload = async (file: File) => {
+    setIsUploadingThumbnail(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const result = await uploadMedia(formData);
+
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+
+      if (result.media?.url) {
+        setThumbnailUrl(result.media.url);
+        toast.success("Image uploaded successfully");
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error("Failed to upload image");
+    } finally {
+      setIsUploadingThumbnail(false);
+    }
+  };
+
+  const handleThumbnailFileSelect = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+
+    // Validate file size (10MB max)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast.error("Image must be less than 10MB");
+      return;
+    }
+
+    handleThumbnailUpload(file);
+  };
+
+  const handleThumbnailDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith("image/")) {
+      handleThumbnailUpload(file);
+    } else {
+      toast.error("Please drop an image file");
+    }
+  };
+
+  const handleThumbnailDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleThumbnailClick = () => {
+    thumbnailInputRef.current?.click();
+  };
 
   const handleAddTag = (tagId: string) => {
     if (!selectedTagIds.includes(tagId)) {
@@ -286,12 +398,15 @@ export function ContentForm({
 
   // Validation helpers
   const isContentEmpty =
-    !editorContent.content ||
+    !editorContent ||
+    !editorContent.type ||
+    editorContent.type !== "doc" ||
+    !Array.isArray(editorContent.content) ||
     editorContent.content.length === 0 ||
     (editorContent.content.length === 1 &&
-      editorContent.content[0].type === "paragraph" &&
-      (!editorContent.content[0].content ||
-        editorContent.content[0].content.length === 0));
+      editorContent.content[0]?.type === "paragraph" &&
+      (!editorContent.content[0]?.content ||
+        editorContent.content[0]?.content.length === 0));
 
   const isTitleEmpty = !title.trim();
   const canSaveDraft = !isTitleEmpty;
@@ -319,6 +434,76 @@ export function ContentForm({
     setStatus("draft");
   };
 
+  const handlePreview = () => {
+    if (!title.trim()) {
+      toast.error("Title is required for preview");
+      return;
+    }
+
+    // Store form state in sessionStorage before navigating
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem(
+        "content-form-body",
+        JSON.stringify(editorContent)
+      );
+      sessionStorage.setItem("content-form-title", title);
+      sessionStorage.setItem("content-form-slug", slug);
+      sessionStorage.setItem("content-form-type", type);
+      sessionStorage.setItem("content-form-status", status);
+      sessionStorage.setItem("content-form-visibility", visibility);
+      sessionStorage.setItem("content-form-excerpt", excerpt);
+      sessionStorage.setItem("content-form-categoryId", categoryId);
+      sessionStorage.setItem("content-form-thumbnailUrl", thumbnailUrl);
+      sessionStorage.setItem(
+        "content-form-isFeatured",
+        JSON.stringify(isFeatured)
+      );
+      sessionStorage.setItem(
+        "content-form-allowComments",
+        JSON.stringify(allowComments)
+      );
+      sessionStorage.setItem("content-form-scheduledAt", scheduledAt);
+      sessionStorage.setItem(
+        "content-form-selectedTagIds",
+        JSON.stringify(selectedTagIds)
+      );
+    }
+
+    const selectedCategory = categories.find((cat) => cat.id === categoryId);
+    const categoryName = selectedCategory?.name || null;
+
+    const selectedTags = availableTags
+      .filter((tag) => selectedTagIds.includes(tag.id))
+      .map((tag) => ({ name: tag.name, slug: tag.slug }));
+
+    // Generate a simple preview ID based on title slug
+    const previewSlug =
+      slug || slugify(title, { lower: true, strict: true, trim: true });
+    const previewId = `${Date.now()}-${previewSlug.substring(0, 20)}`;
+
+    // Store preview data in sessionStorage with preview ID
+    if (typeof window !== "undefined") {
+      const previewData = {
+        title,
+        body: editorContent,
+        excerpt,
+        thumbnailUrl,
+        authorName,
+        categoryName,
+        tags: selectedTags,
+        isFeatured,
+        publishedAt: status === "published" ? new Date().toISOString() : null,
+      };
+      sessionStorage.setItem(
+        `preview-${previewId}`,
+        JSON.stringify(previewData)
+      );
+    }
+
+    const previewUrl = `/content/preview?id=${previewId}`;
+    window.open(previewUrl, "_blank");
+  };
+
   return (
     <form ref={formRef} action={formAction}>
       <div className="flex items-center justify-between mb-6">
@@ -330,6 +515,19 @@ export function ContentForm({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handlePreview}
+            disabled={!title.trim()}
+          >
+            <HugeiconsIcon
+              icon={EyeIcon}
+              strokeWidth={2}
+              className="size-4 mr-2"
+            />
+            Preview
+          </Button>
           <Button
             type={canSaveDraft ? "submit" : "button"}
             name="status"
@@ -439,8 +637,22 @@ export function ContentForm({
           {/* Featured Image */}
           <div className="bg-card border rounded-lg p-4">
             <Label className="mb-3 block font-medium">Featured Image</Label>
-            <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary/50 transition-colors cursor-pointer">
-              {thumbnailUrl ? (
+            <div
+              className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary/50 transition-colors cursor-pointer relative"
+              onClick={handleThumbnailClick}
+              onDrop={handleThumbnailDrop}
+              onDragOver={handleThumbnailDragOver}
+            >
+              {isUploadingThumbnail ? (
+                <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                  <HugeiconsIcon
+                    icon={Loading03Icon}
+                    className="size-10 animate-spin"
+                    strokeWidth={1.5}
+                  />
+                  <span className="text-sm">Uploading...</span>
+                </div>
+              ) : thumbnailUrl ? (
                 <div className="relative">
                   <img
                     src={thumbnailUrl}
@@ -452,7 +664,10 @@ export function ContentForm({
                     variant="destructive"
                     size="icon-xs"
                     className="absolute top-1 right-1"
-                    onClick={() => setThumbnailUrl("")}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setThumbnailUrl("");
+                    }}
                   >
                     <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
                   </Button>
@@ -470,11 +685,19 @@ export function ContentForm({
               )}
             </div>
             <Input
+              ref={thumbnailInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleThumbnailFileSelect}
+              className="hidden"
+            />
+            <Input
               type="url"
               placeholder="Or paste image URL..."
               value={thumbnailUrl}
               onChange={(e) => setThumbnailUrl(e.target.value)}
               className="mt-3 text-sm"
+              onClick={(e) => e.stopPropagation()}
             />
             <Input type="hidden" name="thumbnailUrl" value={thumbnailUrl} />
           </div>
@@ -508,7 +731,7 @@ export function ContentForm({
                 onValueChange={(v) => setType(v as ContentType)}
               >
                 <SelectTrigger className="w-full h-8">
-                  <SelectValue placeholder="Select type" />
+                  <SelectValue>Select type</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="post">Blog Post</SelectItem>
@@ -522,9 +745,9 @@ export function ContentForm({
 
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Category</Label>
-              <Select value={categoryId} onValueChange={setCategoryId}>
+              <Select value={categoryId || ""} onValueChange={setCategoryId}>
                 <SelectTrigger className="w-full h-8">
-                  <SelectValue placeholder="Select category" />
+                  <SelectValue>Select category</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">No category</SelectItem>
@@ -623,7 +846,7 @@ export function ContentForm({
                 onValueChange={(v) => setVisibility(v as ContentVisibility)}
               >
                 <SelectTrigger className="w-full h-8">
-                  <SelectValue placeholder="Select visibility" />
+                  <SelectValue>Select visibility</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="public">Public</SelectItem>
@@ -651,7 +874,7 @@ export function ContentForm({
                 onValueChange={(v) => setStatus(v as ContentStatus)}
               >
                 <SelectTrigger className="w-full h-8">
-                  <SelectValue placeholder="Select status" />
+                  <SelectValue>Select status</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="draft">Draft</SelectItem>

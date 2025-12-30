@@ -1,17 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
 import { generateHTML } from "@tiptap/html";
-import { StarterKit } from "@tiptap/starter-kit";
-import { Image as TiptapImage } from "@tiptap/extension-image";
-import { TaskItem, TaskList } from "@tiptap/extension-list";
-import { TextAlign } from "@tiptap/extension-text-align";
-import { Typography } from "@tiptap/extension-typography";
-import { Highlight } from "@tiptap/extension-highlight";
-import { Subscript } from "@tiptap/extension-subscript";
-import { Superscript } from "@tiptap/extension-superscript";
+import StarterKit from "@tiptap/starter-kit";
+import Image from "@tiptap/extension-image";
+import Link from "@tiptap/extension-link";
 import type { JSONContent } from "@tiptap/core";
-import { formatDistanceToNow } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import "./content-preview.scss";
 
@@ -21,7 +14,6 @@ interface ContentPreviewProps {
   body: JSONContent;
   thumbnailUrl?: string | null;
   authorName: string;
-  publishedAt?: string | null;
   categoryName?: string | null;
   tags?: Array<{ name: string; slug: string }>;
   isFeatured?: boolean;
@@ -33,103 +25,89 @@ export function ContentPreview({
   body,
   thumbnailUrl,
   authorName,
-  publishedAt,
   categoryName,
   tags,
   isFeatured,
 }: ContentPreviewProps) {
-  const htmlContent = useMemo(() => {
-    try {
-      return generateHTML(body, [
-        StarterKit.configure({
-          horizontalRule: false,
-        }),
-        TextAlign.configure({ types: ["heading", "paragraph"] }),
-        TaskList,
-        TaskItem.configure({ nested: true }),
-        Highlight.configure({ multicolor: true }),
-        TiptapImage,
-        Typography,
-        Superscript,
-        Subscript,
-      ]);
-    } catch (error) {
-      console.error("Error generating HTML:", error);
-      return "<p>Error rendering content</p>";
-    }
-  }, [body]);
+  // Generate HTML from TipTap JSON
+  const htmlContent = generateHTML(body, [
+    StarterKit.configure({
+      heading: {
+        levels: [1, 2, 3, 4],
+      },
+    }),
+    Image.configure({
+      inline: false,
+    }),
+    Link.configure({
+      openOnClick: false,
+      HTMLAttributes: {
+        class: "editor-link",
+      },
+    }),
+  ]);
 
   return (
-    <article className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="container mx-auto max-w-4xl px-6 py-8">
-          {categoryName && (
-            <Badge variant="secondary" className="mb-4">
-              {categoryName}
-            </Badge>
-          )}
+    <article className="max-w-3xl mx-auto px-4 py-8">
+      {/* Header */}
+      <header className="mb-8">
+        {categoryName && (
+          <Badge variant="secondary" className="text-xs mb-3">
+            {categoryName}
+          </Badge>
+        )}
 
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
-            {title}
-          </h1>
+        <h1 className="text-3xl md:text-4xl font-bold mb-4 leading-tight">
+          {title}
+        </h1>
 
-          {excerpt && (
-            <p className="text-xl text-muted-foreground mb-6 leading-relaxed">
-              {excerpt}
-            </p>
-          )}
-
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">{authorName}</span>
-            {publishedAt && (
-              <>
-                <span>•</span>
-                <time dateTime={publishedAt}>
-                  {formatDistanceToNow(new Date(publishedAt), {
-                    addSuffix: true,
-                  })}
-                </time>
-              </>
-            )}
-            {isFeatured && (
-              <>
-                <span>•</span>
-                <Badge variant="secondary" className="text-xs">
-                  Featured
-                </Badge>
-              </>
-            )}
-          </div>
-
-          {tags && tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-4">
-              {tags.map((tag) => (
-                <Badge key={tag.slug} variant="outline" className="text-xs">
-                  {tag.name}
-                </Badge>
-              ))}
-            </div>
+        <div className="flex items-center gap-3 text-sm text-muted-foreground mb-4">
+          <span className="font-medium">{authorName}</span>
+          {isFeatured && (
+            <>
+              <span>•</span>
+              <Badge variant="secondary" className="text-xs">
+                Featured
+              </Badge>
+            </>
           )}
         </div>
+
+        {tags && tags.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-6">
+            {tags.map((tag) => (
+              <Badge key={tag.slug} variant="outline" className="text-xs">
+                {tag.name}
+              </Badge>
+            ))}
+          </div>
+        )}
       </header>
 
+      {/* Thumbnail */}
       {thumbnailUrl && (
-        <div className="w-full aspect-video relative bg-muted overflow-hidden">
+        <div className="mb-8">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={thumbnailUrl}
             alt={title}
-            className="w-full h-full object-cover"
+            className="w-full max-w-md mx-auto h-auto rounded-lg"
           />
         </div>
       )}
 
-      <div className="container mx-auto max-w-4xl px-6 py-12">
-        <div
-          className="content-preview"
-          dangerouslySetInnerHTML={{ __html: htmlContent }}
-        />
-      </div>
+      {/* Excerpt */}
+      {excerpt && (
+        <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
+          {excerpt}
+        </p>
+      )}
+
+      {/* Content */}
+      <div
+        className="content-preview prose prose-lg max-w-none"
+        dangerouslySetInnerHTML={{ __html: htmlContent }}
+      />
     </article>
   );
 }

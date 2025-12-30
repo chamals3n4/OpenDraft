@@ -2,22 +2,49 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
-import slugify from "slugify";
-import type { JSONContent } from "@tiptap/core";
+import {
+  parseFormData,
+  buildContentData,
+} from "@/services/content/content.utils";
+import {
+  validateContent,
+  parseBody,
+} from "@/services/content/content.validator";
+import {
+  createContent,
+  updateContent,
+  deleteContentById,
+  findContentById,
+  findContentsWithFilters,
+  bulkDeleteContentsByIds,
+  bulkUpdateContentStatus,
+  updateContentStatusById,
+  updateContentVisibilityById,
+} from "@/services/content/content.service";
+import {
+  syncContentTags,
+  findTagsByContentId,
+  findAllTags,
+  createNewTag,
+} from "@/services/content/tag.service";
+import {
+  upsertSeoMeta,
+  findSeoByContentId,
+} from "@/services/content/seo.service";
+import { findAllCategories } from "@/services/content/category.service";
 
-export type ContentType =
-  | "post"
-  | "page"
-  | "documentation"
-  | "product"
-  | "landing_page";
-export type ContentStatus =
-  | "draft"
-  | "pending_review"
-  | "scheduled"
-  | "published"
-  | "archived";
-export type ContentVisibility = "public" | "private" | "members_only";
+export type {
+  ContentType,
+  ContentStatus,
+  ContentVisibility,
+  ContentFilters,
+  PaginatedContents,
+} from "@/services/content/content.types";
+
+import type {
+  ContentStatus,
+  ContentVisibility,
+} from "@/services/content/content.types";
 
 export interface ContentFormState {
   error: string | null;
@@ -39,166 +66,37 @@ export async function saveContent(
     return { error: "Not authenticated", success: false };
   }
 
-  // Basic fields
-  const id = formData.get("id") as string | null;
-  const title = formData.get("title") as string;
-  const slugInput = formData.get("slug") as string;
-  const bodyJson = formData.get("body") as string;
-  const type = (formData.get("type") as ContentType) || "post";
-  const status = (formData.get("status") as ContentStatus) || "draft";
-  const visibility =
-    (formData.get("visibility") as ContentVisibility) || "public";
-  const excerpt = formData.get("excerpt") as string | null;
-  const categoryId = formData.get("categoryId") as string | null;
-  const thumbnailUrl = formData.get("thumbnailUrl") as string | null;
-  const isFeatured = formData.get("isFeatured") === "true";
-  const allowComments = formData.get("allowComments") !== "false";
-  const scheduledAt = formData.get("scheduledAt") as string | null;
-  
-  // Tags (comma-separated IDs)
-  const tagIds = (formData.get("tagIds") as string)?.split(",").filter(Boolean) || [];
-  
-  // SEO fields
-  const metaTitle = formData.get("metaTitle") as string | null;
-  const metaDescription = formData.get("metaDescription") as string | null;
-  const ogImageUrl = formData.get("ogImageUrl") as string | null;
-  const canonicalUrl = formData.get("canonicalUrl") as string | null;
+  const input = parseFormData(formData);
 
-  // Validation
-  const errors: string[] = [];
-
-  if (!title?.trim()) {
-    errors.push("Title is required");
+  const validation = validateContent(input);
+  if (!validation.valid) {
+    return { error: validation.errors.join(". "), success: false };
   }
 
-  let body: JSONContent;
-  try {
-    body = JSON.parse(bodyJson);
-  } catch {
-    return { error: "Invalid content format", success: false };
+  const { body, error: bodyError } = parseBody(input.bodyJson);
+  if (bodyError) {
+    return { error: bodyError, success: false };
   }
 
-  // Check if content body is empty
-  const isBodyEmpty = !body.content || body.content.length === 0 || 
-    (body.content.length === 1 && 
-     body.content[0].type === "paragraph" && 
-     (!body.content[0].content || body.content[0].content.length === 0));
+  const contentData = buildContentData(input, body, user.id);
 
-  // Content is required when publishing
-  if (status === "published" && isBodyEmpty) {
-    errors.push("Content is required to publish");
-  }
-
-  // Scheduled date is required when scheduling
-  if (status === "scheduled" && !scheduledAt) {
-    errors.push("Schedule date is required for scheduled posts");
-  }
-
-  // Validate scheduled date is in the future
-  if (status === "scheduled" && scheduledAt) {
-    const scheduleDate = new Date(scheduledAt);
-    if (scheduleDate <= new Date()) {
-      errors.push("Schedule date must be in the future");
-    }
-  }
-
-  if (errors.length > 0) {
-    return { error: errors.join(". "), success: false };
-  }
-
-  const slug =
-    slugInput?.trim() ||
-    slugify(title, { lower: true, strict: true, trim: true });
-
-  // Determine published_at based on status
-  let publishedAt = null;
-  if (status === "published") {
-    publishedAt = new Date().toISOString();
-  }
-
-  const contentData = {
-    title: title.trim(),
-    slug,
-    body,
-    body_format: "tiptap-json",
-    type,
-    status,
-    visibility,
-    excerpt: excerpt?.trim() || null,
-    category_id: categoryId || null,
-    thumbnail_url: thumbnailUrl || null,
-    is_featured: isFeatured,
-    allow_comments: allowComments,
-    author_id: user.id,
-    published_at: publishedAt,
-    scheduled_at: status === "scheduled" && scheduledAt ? scheduledAt : null,
-    updated_at: new Date().toISOString(),
-  };
-
-  let contentId = id;
-
-  if (id) {
-    // Update existing content
-    const { error } = await supabase
-      .from("contents")
-      .update(contentData)
-      .eq("id", id);
-
+  let contentId = input.id;
+  if (input.id) {
+    const { error } = await updateContent(supabase, input.id, contentData);
     if (error) {
-      return { error: error.message, success: false };
+      return { error, success: false };
     }
   } else {
-    // Create new content
-    const { data, error } = await supabase
-      .from("contents")
-      .insert(contentData)
-      .select("id")
-      .single();
-
+    const { id, error } = await createContent(supabase, contentData);
     if (error) {
-      if (error.code === "23505") {
-        return {
-          error: "A content with this slug already exists",
-          success: false,
-        };
-      }
-      return { error: error.message, success: false };
+      return { error, success: false };
     }
-    contentId = data.id;
+    contentId = id;
   }
 
-  // Handle tags
   if (contentId) {
-    // Delete existing tags
-    await supabase.from("content_tags").delete().eq("content_id", contentId);
-
-    // Insert new tags
-    if (tagIds.length > 0) {
-      const tagInserts = tagIds.map((tagId) => ({
-        content_id: contentId,
-        tag_id: tagId,
-      }));
-      await supabase.from("content_tags").insert(tagInserts);
-    }
-
-    // Handle SEO meta
-    const seoData = {
-      content_id: contentId,
-      meta_title: metaTitle?.trim() || null,
-      meta_description: metaDescription?.trim() || null,
-      og_image_url: ogImageUrl || null,
-      canonical_url: canonicalUrl?.trim() || null,
-      updated_at: new Date().toISOString(),
-    };
-
-    // Upsert SEO meta
-    const { error: seoError } = await supabase
-      .from("seo_meta")
-      .upsert(seoData, { onConflict: "content_id" });
-
-    if (seoError) {
-      console.error("SEO meta error:", seoError);
-    }
+    await syncContentTags(supabase, contentId, input.tagIds);
+    await upsertSeoMeta(supabase, contentId, input.seoData);
   }
 
   revalidatePath("/content");
@@ -209,134 +107,76 @@ export async function deleteContent(
   id: string
 ): Promise<{ error: string | null }> {
   const supabase = await createClient();
-
-  const { error } = await supabase.from("contents").delete().eq("id", id);
-
-  if (error) {
-    return { error: error.message };
-  }
-
+  const result = await deleteContentById(supabase, id);
   revalidatePath("/content");
-  return { error: null };
+  return result;
 }
 
 export async function getContent(id: string) {
   const supabase = await createClient();
 
-  // Get content with tags and SEO
-  const { data: content, error } = await supabase
-    .from("contents")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  if (error || !content) {
+  const content = await findContentById(supabase, id);
+  if (!content) {
     return null;
   }
 
-  // Get tags for this content
-  const { data: contentTags } = await supabase
-    .from("content_tags")
-    .select("tag_id")
-    .eq("content_id", id);
-
-  // Get SEO meta
-  const { data: seoMeta } = await supabase
-    .from("seo_meta")
-    .select("*")
-    .eq("content_id", id)
-    .single();
+  const tagIds = await findTagsByContentId(supabase, id);
+  const seoMeta = await findSeoByContentId(supabase, id);
 
   return {
     ...content,
-    tag_ids: contentTags?.map((ct) => ct.tag_id) || [],
-    seo_meta: seoMeta || null,
+    tag_ids: tagIds,
+    seo_meta: seoMeta,
   };
 }
 
-export async function getContents() {
+export async function getContents(filters = {}) {
   const supabase = await createClient();
+  return await findContentsWithFilters(supabase, filters);
+}
 
-  const { data, error } = await supabase
-    .from("contents")
-    .select(
-      `
-      id,
-      title,
-      slug,
-      type,
-      status,
-      visibility,
-      created_at,
-      updated_at,
-      published_at,
-      author_id,
-      profiles!contents_author_id_fkey (
-        display_name
-      )
-    `
-    )
-    .order("updated_at", { ascending: false });
+export async function bulkDeleteContents(ids: string[]) {
+  const supabase = await createClient();
+  const result = await bulkDeleteContentsByIds(supabase, ids);
+  revalidatePath("/content");
+  return result;
+}
 
-  if (error) {
-    console.error("Error fetching contents:", error);
-    return [];
-  }
+export async function bulkUpdateStatus(ids: string[], status: ContentStatus) {
+  const supabase = await createClient();
+  const result = await bulkUpdateContentStatus(supabase, ids, status);
+  revalidatePath("/content");
+  return result;
+}
 
-  return data;
+export async function updateContentStatus(id: string, status: ContentStatus) {
+  const supabase = await createClient();
+  const result = await updateContentStatusById(supabase, id, status);
+  revalidatePath("/content");
+  return result;
+}
+
+export async function updateContentVisibility(
+  id: string,
+  visibility: ContentVisibility
+) {
+  const supabase = await createClient();
+  const result = await updateContentVisibilityById(supabase, id, visibility);
+  revalidatePath("/content");
+  return result;
 }
 
 export async function getCategories() {
   const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from("categories")
-    .select("id, name, slug, description, parent_id")
-    .order("name");
-
-  if (error) {
-    return [];
-  }
-
-  return data;
+  return await findAllCategories(supabase);
 }
 
 export async function getTags() {
   const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from("tags")
-    .select("id, name, slug")
-    .order("name");
-
-  if (error) {
-    return [];
-  }
-
-  return data;
+  return await findAllTags(supabase);
 }
 
-// Create a new tag on the fly
-export async function createTag(name: string): Promise<{ id: string; name: string; slug: string } | null> {
+export async function createTag(name: string) {
   const supabase = await createClient();
-
-  const slug = name
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/[\s_-]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
-  const { data, error } = await supabase
-    .from("tags")
-    .insert({ name: name.trim(), slug })
-    .select("id, name, slug")
-    .single();
-
-  if (error) {
-    console.error("Error creating tag:", error);
-    return null;
-  }
-
-  return data;
+  return await createNewTag(supabase, name);
 }

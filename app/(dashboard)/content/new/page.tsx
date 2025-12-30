@@ -1,6 +1,6 @@
 import { requireAuth } from "@/lib/auth";
 import { getCategories, getTags } from "../actions";
-import { ContentForm } from "../content-form";
+import { ContentForm } from "../components/content-form";
 
 export default async function NewContentPage() {
   const user = await requireAuth();
