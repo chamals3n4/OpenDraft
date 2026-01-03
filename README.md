@@ -2,6 +2,13 @@
 
 **OpenDraft** is an open-source, lightweight blog writing platform designed for developers and content creators who want a simple yet powerful solution for managing their content.
 
+You can try out a live demo of OpenDraft here: **<a href="http://opendraft-demo.vercel.app/" target="_blank">opendraft-demo.vercel.app</a>**
+
+**Demo Credentials:**
+
+- **Email**: `admin@opendraft.git`
+- **Password**: `Hello25#`
+
 ![OpenDraft UI](./public/mockup.png)
 
 - [Why OpenDraft?](#why-opendraft)
