@@ -54,11 +54,15 @@ function ContentPreviewPageContent() {
   const title = previewData?.title || searchParams.get("title") || "";
   const excerpt = previewData?.excerpt || searchParams.get("excerpt");
   const body = bodyFromParams;
-  const thumbnailUrl = previewData?.thumbnailUrl || searchParams.get("thumbnailUrl");
-  const authorName = previewData?.authorName || searchParams.get("authorName") || "Author";
-  const categoryName = previewData?.categoryName || searchParams.get("categoryName");
+  const thumbnailUrl =
+    previewData?.thumbnailUrl || searchParams.get("thumbnailUrl");
+  const authorName =
+    previewData?.authorName || searchParams.get("authorName") || "Author";
+  const categoryName =
+    previewData?.categoryName || searchParams.get("categoryName");
   const tags = tagsFromParams;
-  const isFeatured = previewData?.isFeatured || searchParams.get("isFeatured") === "true";
+  const isFeatured =
+    previewData?.isFeatured || searchParams.get("isFeatured") === "true";
 
   const backUrl = searchParams.get("back") || "/content";
 
@@ -96,7 +100,7 @@ export default function ContentPreviewPage() {
     <Suspense
       fallback={
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-muted-foreground">Loading preview...</div>
+          <div className="size-8 animate-spin rounded-full border-[3px] border-muted-foreground/20 border-t-muted-foreground" />
         </div>
       }
     >

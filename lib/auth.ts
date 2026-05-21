@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
+import { cache } from "react";
 
 export type UserRole = "admin" | "editor" | "contributor";
 export type UserStatus = "active" | "suspended";
@@ -23,29 +24,33 @@ export interface AuthUser {
   profile: UserProfile | null;
 }
 
-export async function getAuthUser(): Promise<AuthUser | null> {
+// cache() deduplicates calls within a single HTTP request.
+// The layout calls requireAuth() for the sidebar, then the page calls
+// requireAuth() for its own guard — getAuthUser() runs only once per request.
+export const getAuthUser = cache(async (): Promise<AuthUser | null> => {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: claims, error } = await supabase.auth.getClaims();
 
-  if (!user) {
+  if (error || !claims) {
     return null;
   }
+
+  // claims.claims holds the actual JWT payload (sub, email, etc.)
+  const { sub, email } = claims.claims as { sub: string; email?: string };
 
   const { data: profile } = await supabase
     .from("profiles")
     .select("*")
-    .eq("id", user.id)
+    .eq("id", sub)
     .maybeSingle();
 
   return {
-    id: user.id,
-    email: user.email!,
+    id: sub,
+    email: email as string,
     profile: profile as UserProfile | null,
   };
-}
+});
 
 export async function requireAuth(): Promise<AuthUser> {
   const user = await getAuthUser();

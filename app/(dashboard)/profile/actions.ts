@@ -11,7 +11,7 @@ export interface ProfileFormState {
 
 export async function updateProfile(
   _prevState: ProfileFormState,
-  formData: FormData
+  formData: FormData,
 ): Promise<ProfileFormState> {
   const supabase = await createClient();
 
@@ -58,26 +58,29 @@ export async function updateProfile(
 export async function getProfile() {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims() validates the JWT locally — zero network.
+  // Safe because the middleware (proxy.ts) already refreshed the session cookie.
+  const { data: claims, error } = await supabase.auth.getClaims();
 
-  if (!user) {
+  if (error || !claims) {
     return null;
   }
 
-  const { data: profile, error } = await supabase
+  // claims.claims holds the actual JWT payload (sub, email, etc.)
+  const { sub, email } = claims.claims as { sub: string; email?: string };
+
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("*")
-    .eq("id", user.id)
+    .eq("id", sub)
     .single();
 
-  if (error) {
+  if (profileError) {
     return null;
   }
 
   return {
     ...profile,
-    email: user.email,
+    email,
   };
 }

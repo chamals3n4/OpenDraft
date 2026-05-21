@@ -34,7 +34,25 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ContentEditor } from "@/components/content-editor";
+import dynamic from "next/dynamic";
+
+// Dynamically import the heavy Tiptap editor — only on the client.
+// This shaves ~500ms+ off the server render by skipping the entire
+// Tiptap import graph (15+ extensions, SCSS, toolbar components, icons).
+const ContentEditor = dynamic(
+  () =>
+    import("@/components/content-editor").then((mod) => ({
+      default: mod.ContentEditor,
+    })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="min-h-[300px] rounded-md border bg-muted/20 flex items-center justify-center">
+        <div className="text-muted-foreground text-sm">Loading editor…</div>
+      </div>
+    ),
+  },
+);
 import {
   saveContent,
   createTag,
@@ -154,58 +172,58 @@ export function ContentForm({
   };
 
   const [editorContent, setEditorContent] = useState<any>(
-    getStoredState("body", content?.body || null)
+    getStoredState("body", content?.body || null),
   );
   const [title, setTitle] = useState(
-    getStoredState("title", content?.title || "")
+    getStoredState("title", content?.title || ""),
   );
   const [slug, setSlug] = useState(getStoredState("slug", content?.slug || ""));
   const [type, setType] = useState<ContentType>(
-    getStoredState("type", content?.type || "post")
+    getStoredState("type", content?.type || "post"),
   );
   const [status, setStatus] = useState<ContentStatus>(
-    getStoredState("status", content?.status || "draft")
+    getStoredState("status", content?.status || "draft"),
   );
   const [visibility, setVisibility] = useState<ContentVisibility>(
-    getStoredState("visibility", content?.visibility || "public")
+    getStoredState("visibility", content?.visibility || "public"),
   );
   const [excerpt, setExcerpt] = useState(
-    getStoredState("excerpt", content?.excerpt || "")
+    getStoredState("excerpt", content?.excerpt || ""),
   );
   const [categoryId, setCategoryId] = useState(
-    getStoredState("categoryId", content?.category_id || "")
+    getStoredState("categoryId", content?.category_id || ""),
   );
   const [thumbnailUrl, setThumbnailUrl] = useState(
-    getStoredState("thumbnailUrl", content?.thumbnail_url || "")
+    getStoredState("thumbnailUrl", content?.thumbnail_url || ""),
   );
   const [isFeatured, setIsFeatured] = useState(
-    getStoredState("isFeatured", content?.is_featured || false)
+    getStoredState("isFeatured", content?.is_featured || false),
   );
   const [allowComments, setAllowComments] = useState(
-    getStoredState("allowComments", content?.allow_comments ?? true)
+    getStoredState("allowComments", content?.allow_comments ?? true),
   );
   const [scheduledAt, setScheduledAt] = useState(
-    getStoredState("scheduledAt", content?.scheduled_at || "")
+    getStoredState("scheduledAt", content?.scheduled_at || ""),
   );
 
   const [availableTags, setAvailableTags] = useState<Tag[]>(initialTags);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>(
-    getStoredState("selectedTagIds", content?.tag_ids || [])
+    getStoredState("selectedTagIds", content?.tag_ids || []),
   );
   const [tagInput, setTagInput] = useState("");
   const [isCreatingTag, setIsCreatingTag] = useState(false);
 
   const [metaTitle, setMetaTitle] = useState(
-    content?.seo_meta?.meta_title || ""
+    content?.seo_meta?.meta_title || "",
   );
   const [metaDescription, setMetaDescription] = useState(
-    content?.seo_meta?.meta_description || ""
+    content?.seo_meta?.meta_description || "",
   );
   const [ogImageUrl, setOgImageUrl] = useState(
-    content?.seo_meta?.og_image_url || ""
+    content?.seo_meta?.og_image_url || "",
   );
   const [canonicalUrl, setCanonicalUrl] = useState(
-    content?.seo_meta?.canonical_url || ""
+    content?.seo_meta?.canonical_url || "",
   );
 
   // If editing existing content, allow slug editing by default
@@ -213,7 +231,7 @@ export function ContentForm({
 
   const handleFormAction = async (
     prevState: ContentFormState,
-    formData: FormData
+    formData: FormData,
   ): Promise<ContentFormState> => {
     formData.set("body", JSON.stringify(editorContent));
     // Check if TipTap content is empty
@@ -258,7 +276,7 @@ export function ContentForm({
 
   const [, formAction, isPending] = useActionState(
     handleFormAction,
-    initialState
+    initialState,
   );
 
   const handleEditorChange = useCallback((content: any) => {
@@ -295,7 +313,7 @@ export function ContentForm({
   };
 
   const handleThumbnailFileSelect = (
-    e: React.ChangeEvent<HTMLInputElement>
+    e: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -371,7 +389,7 @@ export function ContentForm({
           lower: true,
           strict: true,
           trim: true,
-        })
+        }),
       );
     }
   };
@@ -387,11 +405,11 @@ export function ContentForm({
   const filteredTags = availableTags.filter(
     (tag) =>
       tag.name.toLowerCase().includes(tagInput.toLowerCase()) &&
-      !selectedTagIds.includes(tag.id)
+      !selectedTagIds.includes(tag.id),
   );
 
   const selectedTags = availableTags.filter((tag) =>
-    selectedTagIds.includes(tag.id)
+    selectedTagIds.includes(tag.id),
   );
 
   const isEditing = !!content?.id;
@@ -444,7 +462,7 @@ export function ContentForm({
     if (typeof window !== "undefined") {
       sessionStorage.setItem(
         "content-form-body",
-        JSON.stringify(editorContent)
+        JSON.stringify(editorContent),
       );
       sessionStorage.setItem("content-form-title", title);
       sessionStorage.setItem("content-form-slug", slug);
@@ -456,16 +474,16 @@ export function ContentForm({
       sessionStorage.setItem("content-form-thumbnailUrl", thumbnailUrl);
       sessionStorage.setItem(
         "content-form-isFeatured",
-        JSON.stringify(isFeatured)
+        JSON.stringify(isFeatured),
       );
       sessionStorage.setItem(
         "content-form-allowComments",
-        JSON.stringify(allowComments)
+        JSON.stringify(allowComments),
       );
       sessionStorage.setItem("content-form-scheduledAt", scheduledAt);
       sessionStorage.setItem(
         "content-form-selectedTagIds",
-        JSON.stringify(selectedTagIds)
+        JSON.stringify(selectedTagIds),
       );
     }
 
@@ -496,7 +514,7 @@ export function ContentForm({
       };
       sessionStorage.setItem(
         `preview-${previewId}`,
-        JSON.stringify(previewData)
+        JSON.stringify(previewData),
       );
     }
 

@@ -1,8 +1,7 @@
 import { requireAuth } from "@/lib/auth";
-import { getMedia } from "./actions";
-import { MediaGrid } from "./media-grid";
+import { MediaClient } from "./media-client";
 
-interface MediaPageProps {
+interface Props {
   searchParams: Promise<{
     search?: string;
     type?: string;
@@ -10,7 +9,7 @@ interface MediaPageProps {
   }>;
 }
 
-export default async function MediaPage({ searchParams }: MediaPageProps) {
+export default async function MediaPage({ searchParams }: Props) {
   await requireAuth();
 
   const params = await searchParams;
@@ -21,28 +20,5 @@ export default async function MediaPage({ searchParams }: MediaPageProps) {
     limit: 24,
   };
 
-  const media = await getMedia(filters);
-
-  return (
-    <div className="flex flex-1 flex-col gap-4 px-6 lg:px-10 py-4 pt-0">
-      <div className="mb-4">
-        <h1 className="text-2xl font-bold">Media Library</h1>
-        <p className="text-muted-foreground">
-          Upload and manage your images and files.
-        </p>
-      </div>
-
-      <MediaGrid
-        media={media.data}
-        pagination={{
-          total: media.total,
-          page: media.page,
-          limit: media.limit,
-          totalPages: media.totalPages,
-        }}
-        filters={filters}
-      />
-    </div>
-  );
+  return <MediaClient filters={filters} />;
 }
-

@@ -12,7 +12,21 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { Skeleton } from "@/components/ui/skeleton";
+import { QueryProvider } from "@/components/query-provider";
 import { requireAuth } from "@/lib/auth";
+import { Suspense } from "react";
+
+function PageLoadingSkeleton() {
+  return (
+    <div className="flex flex-1 flex-col px-6 lg:px-10 py-4 pt-0 gap-4">
+      <Skeleton className="h-8 w-48" />
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-3/4" />
+      <Skeleton className="h-64 w-full" />
+    </div>
+  );
+}
 
 export default async function DashboardLayout({
   children,
@@ -42,7 +56,9 @@ export default async function DashboardLayout({
           </div>
           <ModeToggle />
         </header>
-        {children}
+        <Suspense fallback={<PageLoadingSkeleton />}>
+          <QueryProvider>{children}</QueryProvider>
+        </Suspense>
       </SidebarInset>
     </SidebarProvider>
   );
